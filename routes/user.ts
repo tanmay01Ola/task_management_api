@@ -1,13 +1,13 @@
 import {Router} from "express";
  export const userRouter = Router();
-import {client} from "./db";
-import { userSchema } from "./db";
+import {client} from "../db";
+import { userSchema } from "../db";
 
 userRouter.post("/signup", async(req,res)=>{
     const parsedBody = userSchema.safeParse(req.body);
     console.log( "parsedBody =" , parsedBody);
     if(!parsedBody.success){
-        return res.status(403).json({
+        return res.status(400).json({
             message : "Invalid cridentials",
             error : parsedBody.error.message
         })
@@ -28,7 +28,7 @@ userRouter.post("/signup", async(req,res)=>{
     }
    catch(error : any){
     if(error.message.includes("Unique constraint failed on the fields: (`email`)")){
-        return res.status(409).json({
+        return res.status(400).json({
             message : "Email already exists"
         })
     }
@@ -44,7 +44,7 @@ userRouter.post("/signup", async(req,res)=>{
 userRouter.get("/:id", async (req,res)=>{
     const userId = req.params.id;
     if(!userId){
-        return res.status(409).json({
+        return res.status(400).json({
             message : "Bad request"
         })
     }

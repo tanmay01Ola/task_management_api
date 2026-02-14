@@ -1,7 +1,7 @@
 import { Router } from "express";
 export const projectRouter = Router();
-import { projectSchema } from "./db";
-import {client} from "./db";
+import { projectSchema } from "../db";
+import {client} from "../db";
 
 projectRouter.post("/",async (req,res)=>{
     const parsedProjectbody = projectSchema.safeParse(req.body);
@@ -45,15 +45,10 @@ projectRouter.post("/",async (req,res)=>{
 projectRouter.get("/:userId", async(req,res)=>{
     const userId =req.params.userId;
     console.log("userId =" ,userId);
-    
-    if(!userId || userId === ":userId"){
-        return res.status(411).json({
-            message : "Bad request"
-        })
-    }
+  
     console.log("dfidshf")
     if(typeof userId != 'string'){
-         return res.status(411).json({
+         return res.status(400).json({
             message : "Bad request"
          })
     }
@@ -67,9 +62,8 @@ projectRouter.get("/:userId", async(req,res)=>{
         userId : userId
       }
     })
-    // console.log("response =", response)
     if(!response){
-        return res.status(401).json({
+        return res.status(404).json({
             message : "project not found"
         })
     }
@@ -82,21 +76,21 @@ projectRouter.get("/:userId", async(req,res)=>{
 projectRouter.get("/projects/:id" , async(req,res)=>{
     const projectId = req.params.id;
     if(!projectId || projectId == ":id"){
-        return res.status(409).json({
+        return res.status(400).json({
             message : "Bad request"
         })
     }
+    try{
     const projects = await client.project.findFirst({
         where : {
             id : projectId
         }
     })
      if(!projects){
-        return res.status(411).json({
+        return res.status(404).json({
             message : "Project not found"
         })
      }
-     console.log("projects =", projects);
      const task = await client.task.findMany({
         where : {
             projectId : projects.id
@@ -107,4 +101,9 @@ projectRouter.get("/projects/:id" , async(req,res)=>{
         project : projects,
         task : task
      })
+    } catch(err){
+         return res.status(500).json({
+            message : "Internal server error"
+         })
+    }
 })

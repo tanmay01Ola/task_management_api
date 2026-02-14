@@ -1,14 +1,14 @@
 import { Router } from "express";
 export const taskRouter = Router();
-import { client, taskSchema } from "./db";
-import { updateTaskSchema } from "./db";
+import { client, taskSchema } from "../db";
+import { updateTaskSchema } from "../db";
 import { ta } from "zod/locales";
 
 
 taskRouter.post("/:projectId",async(req,res)=>{
     const parsedBody = taskSchema.safeParse(req.body);
     if(!parsedBody.success){
-        return res.status(409).json({
+        return res.status(400).json({
             message :"Invalid cridentials",
             error : parsedBody.error.message
         })
@@ -24,7 +24,7 @@ taskRouter.post("/:projectId",async(req,res)=>{
         })
         console.log("responsse1 =", response1)
         if(!response1){
-            return res.status(409).json({
+            return res.status(404).json({
                 message : "project not found"
             })
         }
