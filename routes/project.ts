@@ -2,14 +2,13 @@ import { Router } from "express";
 export const projectRouter = Router();
 import { projectSchema } from "../db";
 import {client} from "../db";
+import { errorHandler, errorMiddleware } from "../middleware";
+projectRouter.use(errorMiddleware)
 
-projectRouter.post("/",async (req,res)=>{
+projectRouter.post("/",async (req,res , next)=>{
     const parsedProjectbody = projectSchema.safeParse(req.body);
     if(!parsedProjectbody.success){
-        return res.status(409).json({
-            message :"Invalid cridentials",
-            error : parsedProjectbody.error.message
-        })
+        return next(new errorHandler("Bad request", 400))
     }
     const {title , description , email } = parsedProjectbody.data;
     try{
@@ -19,9 +18,7 @@ projectRouter.post("/",async (req,res)=>{
             }
         })
         if(!user){
-            return res.status(409).json({
-                message : "email not found "
-            })
+            return next(new errorHandler("user not logged in", 404))
         }
         const project = await client.project.create({
             data : {
@@ -36,74 +33,59 @@ projectRouter.post("/",async (req,res)=>{
         })
     }
     catch(err){
-        return res.status(500).json({
-            message : "Internal server error"
-        })
+        next(err)
     }
 })
 
-projectRouter.get("/:userId", async(req,res)=>{
+projectRouter.get("/:userId", async(req,res , next)=>{
     const userId =req.params.userId;
-    console.log("userId =" ,userId);
-  
-    console.log("dfidshf")
+    try{
     if(typeof userId != 'string'){
-         return res.status(400).json({
-            message : "Bad request"
-         })
+         return next (new errorHandler("Bad request", 400 ))
     }
-    if(!userId){
-        return res.status(409).json({
-            message : "Bad request"
-        })
-    }
-    const response = await client.project.findFirst({
+    
+    const project = await client.project.findFirst({
       where : {
         userId : userId
       }
     })
-    if(!response){
-        return res.status(404).json({
-            message : "project not found"
-        })
+    if(!project){
+        return next (new errorHandler("Project not found", 404))
     }
     res.json({
-        response
+        project
     })
+}   catch(err){
+    next(err)
+}
 })
 
 
-projectRouter.get("/projects/:id" , async(req,res)=>{
+projectRouter.get("/projects/:id" , async(req,res, next)=>{
     const projectId = req.params.id;
-    if(!projectId || projectId == ":id"){
-        return res.status(400).json({
-            message : "Bad request"
-        })
-    }
     try{
+    if(typeof projectId != "string"){
+      return next(new errorHandler("Bad request", 400))
+    }
+    
     const projects = await client.project.findFirst({
         where : {
             id : projectId
         }
     })
      if(!projects){
-        return res.status(404).json({
-            message : "Project not found"
-        })
+        return next (new errorHandler("project not fouund", 404))
      }
      const task = await client.task.findMany({
         where : {
             projectId : projects.id
         }
      })
-    //  console.log("task =", task);
      res.json({
         project : projects,
         task : task
      })
     } catch(err){
-         return res.status(500).json({
-            message : "Internal server error"
-         })
+         next(err)
     }
 })

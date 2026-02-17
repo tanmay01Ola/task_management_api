@@ -1,71 +1,66 @@
-import {Router} from "express";
+import { Router} from "express";
  export const userRouter = Router();
 import {client} from "../db";
 import { userSchema } from "../db";
-
-userRouter.post("/signup", async(req,res)=>{
-    const parsedBody = userSchema.safeParse(req.body);
-    console.log( "parsedBody =" , parsedBody);
-    if(!parsedBody.success){
-        return res.status(400).json({
-            message : "Invalid cridentials",
-            error : parsedBody.error.message
-        })
-    }
-    const {name , email} = parsedBody.data;
+import { errorHandler } from "../middleware";
+import {errorMiddleware} from "../middleware";
+userRouter.use(errorMiddleware);
+userRouter.post("/signup",async(req ,res  , next )=>{
     try{
+    const parsedBody = userSchema.safeParse(req.body);
+    if(!parsedBody.success){
+        const error = new errorHandler ("bad request", 400);
+        return next(error);
+    }
+    const {name, email} = parsedBody.data;
+    
      const response = await client.user.create({
         data : {
             name : name,
             email : email
         }
      })
-
+     
      res.json({
         message : "User signed up",
         userId : response.id
      })
     }
-   catch(error : any){
-    if(error.message.includes("Unique constraint failed on the fields: (`email`)")){
-        return res.status(400).json({
-            message : "Email already exists"
-        })
+   catch(err : any){
+    if(err.code === 'P2002'){
+        console.log()
+        const error = new errorHandler("Email already exists", 400);
+        return next(error)
     }
-    else {
-        return res.status(500).json({
-            message : 'Internal server error'
-        })
-    }
+    next(err)
    }
 })
 
 
-userRouter.get("/:id", async (req,res)=>{
+userRouter.get("/:id", async (req ,res , next)=>{
     const userId = req.params.id;
-    if(!userId){
-        return res.status(400).json({
-            message : "Bad request"
-        })
-    }
+    console.log("userID =",typeof userId);
     try{
+    if(typeof userId !== "string"){
+        console.log("here")
+        const error =  new errorHandler("bad request", 400);
+        return next(error)
+         
+    }
+    
     const response = await client.user.findFirst({
         where :{
             id : userId
         }
     })
     if(!response){
-        return res.status(409).json({
-            message : "user not found"
-        })
+        return next(new errorHandler("User not signed up" , 404))
     }
     res.json({
         response
     })
 }
  catch(err){
-    return res.status(500).json({
-        message : 'Internal server error'
-    })
+    next(err)
  }
 })
